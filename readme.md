@@ -61,17 +61,47 @@ See [js-path-resolver official documentation](https://www.twelvetone.tv/docs/dev
 
 ## Vue and Vuex
 
-Two optional entry points. Both require **Vue 2**, declared as an optional peer dependency,
-because `Vue.set` exists only in Vue 2: its reactivity cannot observe a property added after an
-object became reactive. The main entry needs no framework.
+Two optional entry points. The main entry needs no framework and never did.
 
 ```js
 import { mutations, getters } from 'js-path-resolver/vuex'
 import DotPathPlugin from 'js-path-resolver/vue-plugin'
 ```
 
-`mutations` provides `path.set`, `path.list.remove` and related dot-path mutations for a Vuex
-store. `DotPathPlugin` adds a `$dp(command, path, value)` helper to components.
+`mutations` provides `path.set`, `path.clear`, `path.list.add`, `path.list.remove`,
+`path.list.insert`, `path.list.replace` and `path.list.move` for a Vuex store, and `getters`
+provides `pathGet` and `pathExists`. **As of 2.0.0 this entry point imports nothing but the
+resolver**: Vue 3's reactivity observes a plain assignment, so the `Vue.set` calls that Vue 2
+required are gone, and these mutations work against any object.
+
+`DotPathPlugin` is **Vue 3 only** and takes the store:
+
+```js
+import { createStore } from 'vuex'
+import { mutations, getters } from 'js-path-resolver/vuex'
+import DotPathPlugin from 'js-path-resolver/vue-plugin'
+
+const store = createStore({ state, mutations, getters })
+app.use(store).use(DotPathPlugin, { store })
+```
+
+```js
+this.$dp('path.list.add', 'a.b', value)   // any mutation by name
+this.$dp.set('a.b', value)                // shorthand for path.set
+```
+
+Outside a component, `createDotPathDispatcher(store)` returns the same function.
+
+Passing the store is required because Vue 3 reads a global property with
+`globalProperties[key]`, a plain access on that object, so nothing installed there can see the
+component that read it. The Vue 2 plugin found the store through the component; Vue 3 has no
+component prototype to hang that on.
+
+### Staying on Vue 2
+
+Use **1.1.0**, which is the last release with the Vue 2 plugin and the `Vue.set` mutations. It
+is not a deprecated version: it carries all six fixes listed in the changelog and the same
+licence.
 
 
 ## License

@@ -1,12 +1,13 @@
-import Vue from 'vue'
 import jsPathResolver from './jsPathResolver.js'
 
-// Vue.set is a Vue 2 requirement only: Vue 2 reactivity cannot observe a property
-// added after an object was made reactive. Vue 3 removed the API, because its
-// Proxy-based reactivity needs no such hint, so a Vue 3 port of this file drops this
-// import and assigns directly. This import had been commented out while the three
-// Vue.set calls below remained, which left Vue as an undefined free variable and made
-// mutations['path.set'] throw ReferenceError on first use.
+// This module imports nothing but the resolver, and that is the point of 2.0.0.
+//
+// Up to 1.1.0 it called Vue.set to add a property, which Vue 2 needs because its
+// reactivity cannot observe a property added after an object became reactive. Vue 3
+// replaced that reactivity with a Proxy, which observes the assignment itself, and
+// removed the API. So the Vue 3 form is plain assignment, and dropping the import
+// leaves this module framework-agnostic: it is a set of Vuex mutations by convention
+// only, and works against any plain object.
 
 let debug = false
 
@@ -129,8 +130,13 @@ const mutations =
     'path.set'(state, payload) {
       let {path, value} = payload
       let found = jsPathResolver(state, path)
-      checkDefined(path, found);
-      Vue.set(found.parent, found.fieldName, value)
+      // Deliberately does NOT call checkDefined. Adding a property that was not there is
+      // this mutation's documented purpose, and was the whole reason it called Vue.set
+      // under Vue 2, so warning about it fired on correct use. The warning also carried no
+      // information, since nothing here can tell a typo from an intended new property.
+      // Every other mutation still checks, because operating on a list that does not exist
+      // really is a mistake.
+      found.parent[found.fieldName] = value
       log(state)
     },
     'path.clear'(state, payload) {
@@ -138,7 +144,7 @@ const mutations =
       let found = jsPathResolver(state, path)
       checkDefined(path, found);
       if (found.field instanceof Array) {
-        Vue.set(found.parent, found.fieldName, [])
+        found.parent[found.fieldName] = []
       }
       // `instanceof String` is false for a string primitive, which is what every string in
       // a Vuex state actually is, so clearing a string always fell through to the error
@@ -146,7 +152,7 @@ const mutations =
       // ReferenceError instead of logging. Two defects on one path: the test that could
       // not match, and the message that could not print.
       else if (typeof found.field === 'string') {
-        Vue.set(found.parent, found.fieldName, '')
+        found.parent[found.fieldName] = ''
       } else {
         console.error(`path.clear does not support the type at ${path}`)
       }

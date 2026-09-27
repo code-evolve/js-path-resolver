@@ -1,8 +1,6 @@
-var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -16,14 +14,6 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/dot-path-mutations.js
@@ -34,7 +24,6 @@ __export(dot_path_mutations_exports, {
   mutations: () => mutations
 });
 module.exports = __toCommonJS(dot_path_mutations_exports);
-var import_vue = __toESM(require("vue"));
 
 // src/jsPathResolver.js
 var rxReplace = /\\(.)/g;
@@ -222,8 +211,7 @@ var mutations = {
   "path.set"(state, payload) {
     let { path, value } = payload;
     let found = jsPathResolver_default(state, path);
-    checkDefined(path, found);
-    import_vue.default.set(found.parent, found.fieldName, value);
+    found.parent[found.fieldName] = value;
     log(state);
   },
   "path.clear"(state, payload) {
@@ -231,9 +219,9 @@ var mutations = {
     let found = jsPathResolver_default(state, path);
     checkDefined(path, found);
     if (found.field instanceof Array) {
-      import_vue.default.set(found.parent, found.fieldName, []);
+      found.parent[found.fieldName] = [];
     } else if (typeof found.field === "string") {
-      import_vue.default.set(found.parent, found.fieldName, "");
+      found.parent[found.fieldName] = "";
     } else {
       console.error(`path.clear does not support the type at ${path}`);
     }

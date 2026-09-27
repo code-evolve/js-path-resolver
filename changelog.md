@@ -1,3 +1,36 @@
+# 2.0.0
+
+**Vue 3.** The major version is the Vue 2 to Vue 3 move and nothing else: the resolver itself,
+which is what almost every consumer imports, is unchanged and needs no framework. If you do not
+import `js-path-resolver/vuex` or `js-path-resolver/vue-plugin`, upgrading from 1.1.0 changes
+nothing for you.
+
+- **Breaking:** the Vue plugin is Vue 3 only, and takes the store:
+  `app.use(DotPathPlugin, { store })`. It used to find the store through the component, which
+  Vue 3 cannot do: Vue reads a global property with `globalProperties[key]`, a plain access on
+  that object, so anything installed there is read with `globalProperties` as its receiver and
+  can never see the component. Verified against Vue 3.5.43's source rather than inferred.
+  Installing without a store throws a `TypeError` naming the fix instead of failing later at the
+  first commit. `createDotPathDispatcher(store)` is exported for use outside a component.
+- **Breaking:** `js-path-resolver/vuex` no longer imports Vue. Vue 3's Proxy reactivity observes
+  a plain assignment, so the three `Vue.set` calls are ordinary assignments and the module has no
+  framework in it at all. It is now a set of Vuex mutations by convention only, and works against
+  any plain object. A test asserts the built file names no `vue` import, because a stray one
+  would reintroduce the peer requirement without failing a single behavioural test.
+- **Breaking:** the `vue` peer dependency is `^3`, was `^2`. Still optional: the main entry has
+  no peer requirement.
+- **Fixed:** `path.set` warned `was not defined in the state object` when adding a property that
+  was not there, which is its documented purpose and the entire reason it called `Vue.set` under
+  Vue 2. The warning fired on correct use and carried no information, since nothing at that point
+  can distinguish a typo from an intended new property. Every other mutation still checks, because
+  operating on a list that does not exist really is a mistake.
+- Development dependencies are `esbuild` and `vue` 3, the latter only so the plugin can be proved
+  inside a real Vue 3 app rather than against a stub. 43 tests across 12 suites.
+- Runtime dependencies: still none.
+
+**Staying on Vue 2:** use 1.1.0. It is the last release with the Vue 2 plugin and carries all six
+fixes below.
+
 # 1.1.0
 
 - **Fixed:** a segment containing more than one escape was only unescaped once, so a path

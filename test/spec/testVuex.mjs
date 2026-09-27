@@ -2,10 +2,12 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { mutations, getters } from '../../dist/vuex.mjs'
 
-// Regression: this module's `import Vue from 'vue'` had been commented out while three
-// Vue.set calls remained, so Vue was an undefined free variable and mutations['path.set']
-// threw ReferenceError on first use. It was never published, so nobody hit it.
-describe('vuex mutations (Vue 2)', () => {
+// The module imports no framework as of 2.0.0: Vue 3's Proxy reactivity observes a plain
+// assignment, so the Vue.set calls Vue 2 needed are gone and these mutations work against
+// any object. Up to 1.1.0 the `import Vue from 'vue'` had been commented out while three
+// Vue.set calls remained, so Vue was an undefined free variable and path.set threw
+// ReferenceError on first use.
+describe('vuex mutations', () => {
   it('path.set assigns to an existing property', () => {
     const state = { list: ['a', 'b'] }
     mutations['path.set'](state, { path: 'list.0', value: 'Z' })
@@ -13,7 +15,8 @@ describe('vuex mutations (Vue 2)', () => {
   })
 
   it('path.set adds a property that did not exist', () => {
-    // This is the line that needs Vue.set under Vue 2, and the one that threw.
+    // The line that needed Vue.set under Vue 2, and the one that threw when the import
+    // went missing. Under Vue 3 it is a plain assignment.
     const state = { obj: {} }
     mutations['path.set'](state, { path: 'obj.brandNew', value: 42 })
     assert.strictEqual(state.obj.brandNew, 42)

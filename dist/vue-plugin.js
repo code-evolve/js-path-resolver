@@ -19,32 +19,27 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/DotPathPlugin.js
 var DotPathPlugin_exports = {};
 __export(DotPathPlugin_exports, {
+  createDotPathDispatcher: () => createDotPathDispatcher,
   default: () => DotPathPlugin_default
 });
 module.exports = __toCommonJS(DotPathPlugin_exports);
-var perComponent = /* @__PURE__ */ new WeakMap();
-function dispatcherFor(vm) {
-  let dp = perComponent.get(vm);
-  if (dp) {
-    return dp;
+function createDotPathDispatcher(store) {
+  if (!store || typeof store.commit !== "function") {
+    throw new TypeError(
+      "js-path-resolver/vue-plugin: a Vuex store is required, as app.use(DotPathPlugin, { store }). Vue 3 cannot resolve it from the component the way the Vue 2 plugin did."
+    );
   }
-  dp = function(command, path, value) {
-    vm.$store.commit(command, { path, value });
+  const dispatch = function(command, path, value) {
+    store.commit(command, { path, value });
   };
-  dp.set = function(path, value) {
-    vm.$store.commit("path.set", { path, value });
+  dispatch.set = function(path, value) {
+    store.commit("path.set", { path, value });
   };
-  perComponent.set(vm, dp);
-  return dp;
+  return dispatch;
 }
 var DotPathPlugin = {
-  install(Vue, options) {
-    Object.defineProperty(Vue.prototype, "$dp", {
-      configurable: true,
-      get() {
-        return dispatcherFor(this);
-      }
-    });
+  install(app, options = {}) {
+    app.config.globalProperties.$dp = createDotPathDispatcher(options.store);
   }
 };
 var DotPathPlugin_default = DotPathPlugin;

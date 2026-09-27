@@ -33,3 +33,18 @@ describe('packaging', () => {
     assert.match(src, /jsPathResolver/)
   })
 })
+
+// 2.0.0's substantive claim about the Vuex module is that it has no framework in it. That
+// is worth asserting rather than trusting: a stray `import Vue from 'vue'` reintroduces a
+// peer requirement without breaking a single behavioural test, because the tests install
+// vue anyway.
+describe('the vuex build carries no framework', () => {
+  it('names no vue import', async () => {
+    const fs = await import('node:fs/promises')
+    const url = new URL('../../dist/vuex.mjs', import.meta.url)
+    const source = await fs.readFile(url, 'utf8')
+    assert.doesNotMatch(source, /from\s*["']vue["']/)
+    assert.doesNotMatch(source, /require\(["']vue["']\)/)
+    assert.doesNotMatch(source, /Vue\.set/)
+  })
+})

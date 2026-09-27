@@ -1,6 +1,3 @@
-// src/dot-path-mutations.js
-import Vue from "vue";
-
 // src/jsPathResolver.js
 var rxReplace = /\\(.)/g;
 function unescape(field) {
@@ -187,8 +184,7 @@ var mutations = {
   "path.set"(state, payload) {
     let { path, value } = payload;
     let found = jsPathResolver_default(state, path);
-    checkDefined(path, found);
-    Vue.set(found.parent, found.fieldName, value);
+    found.parent[found.fieldName] = value;
     log(state);
   },
   "path.clear"(state, payload) {
@@ -196,9 +192,9 @@ var mutations = {
     let found = jsPathResolver_default(state, path);
     checkDefined(path, found);
     if (found.field instanceof Array) {
-      Vue.set(found.parent, found.fieldName, []);
+      found.parent[found.fieldName] = [];
     } else if (typeof found.field === "string") {
-      Vue.set(found.parent, found.fieldName, "");
+      found.parent[found.fieldName] = "";
     } else {
       console.error(`path.clear does not support the type at ${path}`);
     }

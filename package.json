@@ -1,6 +1,6 @@
 {
   "name": "js-path-resolver",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "license": "MIT",
   "main": "dist/index.js",
   "description": "Resolves paths in Javascript objects, and provides tools to get, set, replace, or remove the resolved item",
@@ -19,7 +19,7 @@
   "runkitExampleFilename": "demo/index.js",
   "devDependencies": {
     "esbuild": "^0.28.2",
-    "vue": "^2.7.16"
+    "vue": "^3.5.0"
   },
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm && npm run build:global && npm run build:vuex && npm run build:plugin",
@@ -55,7 +55,7 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "vue": "^2"
+    "vue": "^3"
   },
   "peerDependenciesMeta": {
     "vue": {

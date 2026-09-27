@@ -1,47 +1,56 @@
 /**
- * Vue 2 plugin exposing `this.$dp` on every component.
+ * Vue 3 plugin exposing `this.$dp` on every component.
+ *
+ *   import { createStore } from 'vuex'
+ *   import DotPathPlugin from 'js-path-resolver/vue-plugin'
+ *
+ *   const store = createStore({ state, mutations, getters })
+ *   app.use(store).use(DotPathPlugin, { store })
  *
  *   this.$dp('path.list.add', 'a.b', value)   // any mutation by name
  *   this.$dp.set('a.b', value)                // shorthand for 'path.set'
  *
- * `$dp` is a prototype ACCESSOR rather than a plain prototype method, and that is the
- * whole fix in this file. The obvious form, `Vue.prototype.$dp.set = function () {...}`,
- * attaches `set` to the shared function OBJECT: calling `this.$dp.set(p, v)` makes the
- * receiver that function, so `this.$store` inside it is undefined and every call throws
- * `TypeError: Cannot read properties of undefined (reading 'commit')`. `this.$dp(...)`
- * worked, `this.$dp.set(...)` never did, and only calling it reveals that -- checking
- * that it exists does not.
+ * The store is passed in, and that is the breaking change in 2.0.0. Under Vue 2 the
+ * plugin could find the store through the component, because `$dp` was installed as a
+ * prototype accessor and an accessor on a prototype receives the component as `this`.
+ * Vue 3 has no component prototype to extend; its replacement is
+ * `app.config.globalProperties`, and Vue reads a global property with
  *
- * The accessor closes over the component instead, so both call shapes reach the store.
- * The result is memoized per component in a WeakMap: one object per component that ever
- * touches `$dp`, released with the component, and no allocation per call.
+ *   return globalProperties[key]
+ *
+ * a plain property access on that object. So an accessor there is called with
+ * `globalProperties` as its receiver and can never see the component. Verified against
+ * Vue 3.5.43's own source, not inferred.
+ *
+ * Passing the store is better than working around that anyway: one app has one store, so
+ * a single dispatcher serves every component with nothing allocated per component and no
+ * global mixin. It also makes `$dp.set` correct by construction rather than by a trick,
+ * and the function below works with no Vue at all.
  */
 
-const perComponent = new WeakMap()
-
-function dispatcherFor(vm) {
-  let dp = perComponent.get(vm)
-  if (dp) {
-    return dp
+/**
+ * The dispatcher, independent of Vue: useful directly from `setup()`, from a composable,
+ * or from plain code holding a store.
+ */
+export function createDotPathDispatcher(store) {
+  if (!store || typeof store.commit !== 'function') {
+    throw new TypeError(
+      'js-path-resolver/vue-plugin: a Vuex store is required, as app.use(DotPathPlugin, { store }). ' +
+        'Vue 3 cannot resolve it from the component the way the Vue 2 plugin did.',
+    )
   }
-  dp = function (command, path, value) {
-    vm.$store.commit(command, { path, value })
+  const dispatch = function (command, path, value) {
+    store.commit(command, { path, value })
   }
-  dp.set = function (path, value) {
-    vm.$store.commit('path.set', { path, value })
+  dispatch.set = function (path, value) {
+    store.commit('path.set', { path, value })
   }
-  perComponent.set(vm, dp)
-  return dp
+  return dispatch
 }
 
 const DotPathPlugin = {
-  install(Vue, options) {
-    Object.defineProperty(Vue.prototype, '$dp', {
-      configurable: true,
-      get() {
-        return dispatcherFor(this)
-      },
-    })
+  install(app, options = {}) {
+    app.config.globalProperties.$dp = createDotPathDispatcher(options.store)
   },
 }
 

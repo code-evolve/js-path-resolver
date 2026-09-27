@@ -1,65 +1,63 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import DotPathPlugin from '../../dist/vue-plugin.mjs'
+import DotPathPlugin, { createDotPathDispatcher } from '../../dist/vue-plugin.mjs'
 
-// A component, as far as this plugin is concerned: something on Vue's prototype chain
-// with a $store. Enough to exercise `$dp` without pulling Vue into the test run.
-function componentOf(FakeVue, committed) {
-  const vm = Object.create(FakeVue.prototype)
-  vm.$store = { commit: (type, payload) => committed.push([type, payload]) }
-  return vm
+function recordingStore(committed) {
+  return { commit: (type, payload) => committed.push([type, payload]) }
 }
 
-describe('Vue 2 plugin', () => {
-  it('exposes an install function', () => {
+// A Vue 3 app, as far as this plugin is concerned. The plugin only ever touches
+// config.globalProperties, so this is the whole surface it uses.
+function fakeApp() {
+  return { config: { globalProperties: {} } }
+}
+
+describe('Vue 3 plugin', () => {
+  it('exposes an install function and the dispatcher factory', () => {
     assert.strictEqual(typeof DotPathPlugin.install, 'function')
+    assert.strictEqual(typeof createDotPathDispatcher, 'function')
   })
 
-  it('registers $dp, with a set shorthand', () => {
-    const FakeVue = function () {}
-    DotPathPlugin.install(FakeVue, {})
-    const vm = componentOf(FakeVue, [])
-    assert.strictEqual(typeof vm.$dp, 'function')
-    assert.strictEqual(typeof vm.$dp.set, 'function')
+  it('installs $dp on globalProperties, with a set shorthand', () => {
+    const app = fakeApp()
+    DotPathPlugin.install(app, { store: recordingStore([]) })
+    assert.strictEqual(typeof app.config.globalProperties.$dp, 'function')
+    assert.strictEqual(typeof app.config.globalProperties.$dp.set, 'function')
   })
 
-  it('$dp commits through the store', () => {
-    const FakeVue = function () {}
-    DotPathPlugin.install(FakeVue, {})
+  it('$dp commits a named mutation', () => {
     const committed = []
-    componentOf(FakeVue, committed).$dp('path.list.add', 'a.b', 1)
+    const app = fakeApp()
+    DotPathPlugin.install(app, { store: recordingStore(committed) })
+    app.config.globalProperties.$dp('path.list.add', 'a.b', 1)
     assert.deepStrictEqual(committed, [['path.list.add', { path: 'a.b', value: 1 }]])
   })
 
-  // Regression. `Vue.prototype.$dp.set = ...` attached `set` to the shared function object,
-  // so `this.$dp.set(p, v)` called it with that function as the receiver and `this.$store`
-  // was undefined. The previous version of this suite asserted only that `$dp.set` was a
-  // function, which it was: existence passed while every call threw.
-  it('$dp.set commits path.set through the store of the component that called it', () => {
-    const FakeVue = function () {}
-    DotPathPlugin.install(FakeVue, {})
+  // The call that was broken through 1.1.0 and every release before it. Under Vue 3 it
+  // works for a different reason than under Vue 2: the store is held by the dispatcher
+  // rather than reached through the component, so there is no receiver to lose.
+  it('$dp.set commits path.set, whatever the receiver of the call is', () => {
     const committed = []
-    componentOf(FakeVue, committed).$dp.set('a.b', 1)
+    const app = fakeApp()
+    DotPathPlugin.install(app, { store: recordingStore(committed) })
+    const { $dp } = app.config.globalProperties
+    const detached = $dp.set
+    detached('a.b', 1)
     assert.deepStrictEqual(committed, [['path.set', { path: 'a.b', value: 1 }]])
   })
 
-  it('gives each component its own dispatcher, so two components cannot cross stores', () => {
-    const FakeVue = function () {}
-    DotPathPlugin.install(FakeVue, {})
-    const first = []
-    const second = []
-    const a = componentOf(FakeVue, first)
-    const b = componentOf(FakeVue, second)
-    a.$dp.set('x', 1)
-    b.$dp.set('y', 2)
-    assert.deepStrictEqual(first, [['path.set', { path: 'x', value: 1 }]])
-    assert.deepStrictEqual(second, [['path.set', { path: 'y', value: 2 }]])
+  it('refuses a missing store with a message naming the fix', () => {
+    assert.throws(() => DotPathPlugin.install(fakeApp(), {}), {
+      name: 'TypeError',
+      message: /a Vuex store is required.*app\.use\(DotPathPlugin, \{ store \}\)/s,
+    })
   })
 
-  it('returns the same dispatcher on repeated access, rather than one per read', () => {
-    const FakeVue = function () {}
-    DotPathPlugin.install(FakeVue, {})
-    const vm = componentOf(FakeVue, [])
-    assert.strictEqual(vm.$dp, vm.$dp)
+  it('refuses something that is not a store', () => {
+    assert.throws(() => createDotPathDispatcher({ dispatch() {} }), { name: 'TypeError' })
+  })
+
+  it('installs with no options object at all, rather than throwing on a property read', () => {
+    assert.throws(() => DotPathPlugin.install(fakeApp()), { name: 'TypeError' })
   })
 })

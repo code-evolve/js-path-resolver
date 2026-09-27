@@ -1,0 +1,80 @@
+# 1.1.0
+
+- **Fixed:** a segment containing more than one escape was only unescaped once, so a path
+  such as `a\.b\.c` resolved to the wrong property name and reported `exists: true` with
+  `field: undefined`, a silent false success. The unescape pattern is now global.
+- **Fixed:** bracket notation read the right element but mutated the wrong one. `foo[2]`
+  returned a `fieldName` of `2]`, so `set()` and `delete()` addressed a property literally
+  named `2]`: the array was left unchanged and a stray key was added. Traversal and the
+  returned name now share one helper, so they cannot disagree again.
+- **Fixed:** the Vuex mutations module had `import Vue from 'vue'` commented out while three
+  `Vue.set` calls remained, so `Vue` was an undefined free variable and `mutations['path.set']`
+  threw `ReferenceError` on first use. It had never been published, so nobody hit it. A
+  `deepcopy` call behind a disabled debug flag referenced a function that was never defined
+  anywhere; it now uses `structuredClone`.
+- **Fixed:** `this.$dp.set(path, value)` in the Vue plugin threw
+  `TypeError: Cannot read properties of undefined (reading 'commit')` on every call, and had
+  never worked. `set` was attached to the shared `Vue.prototype.$dp` function object, so the
+  receiver of the call was that function rather than the component, and `this.$store` was
+  undefined. `$dp` is now a prototype accessor closing over the component, memoized per
+  component, so both `$dp(command, path, value)` and `$dp.set(path, value)` reach the store.
+- **Fixed:** `path.clear` threw `ReferenceError: it is not defined` on every string. Its test
+  was `found.field instanceof String`, which is false for a string primitive and therefore for
+  every string in a Vuex state, so a string fell through to an error branch that referenced an
+  undeclared variable. Two defects on one path: a test that could not match, and a message that
+  could not print.
+- **Fixed:** `path.list.move` with `index: 'before'` or `'after'` was off by one whenever the
+  item sat ahead of the reference. It read the reference index before splicing the item out, so
+  removing the item shifted the reference down one: moving `a` after `b` in `[a, b, c]` gave
+  `[b, c, a]` instead of `[b, a, c]`. It was correct in the other direction, which is why it
+  survived. Also collapsed a sign test in the same function whose two branches were identical.
+- `path.list.insert` called without an `index` still does nothing, and is documented rather than
+  changed: it derives the index from `indexOf(value)`, which is `-1` for a value not already in
+  the list. Appending is what `path.list.add` is for, and any other guess at the intended
+  position would be inventing semantics.
+- Added two entry points that were previously unpublished source only: `js-path-resolver/vuex`
+  (Vuex mutations and getters) and `js-path-resolver/vue-plugin` (a `$dp` helper). `vue` is an
+  **optional peer dependency** on `^2`, because `Vue.set` is a Vue 2 requirement: Vue 2 cannot
+  observe a property added after an object became reactive. The main entry needs no framework
+  and has no dependencies.
+- Added `exports` with both ESM (`dist/index.mjs`) and CommonJS (`dist/index.js`), plus a
+  minified browser build (`dist/index.global.js`). `require('js-path-resolver').default`
+  keeps working exactly as before.
+- Build moved from webpack 4 and babel 6 to esbuild; tests moved from mocha and chai to the
+  Node test runner. Development dependencies went from 8 to 2 and reported vulnerabilities
+  from 112 to 1, a low advisory in `vue` itself, needed only to run the Vuex tests. Nothing
+  about the runtime changed: there are still no dependencies.
+- Declared a licence. 1.0.14 and earlier were published with no licence field at all, which
+  meant default copyright applied and nobody could lawfully use them.
+- 41 tests across 11 suites, up from 12, verified against an installed tarball for all three
+  entry points in both module systems. Every fix above has a test that fails without it.
+
+#Changelog
+##1.0.14
+- Update docs
+##1.0.13
+- Fixed UMD build
+- Added option `onError`
+##1.0.12
+- Use match instead of split for cross-browser regex support
+##1.0.11
+##1.0.10
+##1.0.9
+##1.0.8
+- Workaround for Safari and Firefox regexp lookbehind issue
+##1.0.7
+- Force RunKit to refresh
+##1.0.6
+- Update demo
+##1.0.5
+- Fix module export issues
+##1.0.4
+- Fix module export issues
+##1.0.3
+- Fix webpack globalObject issues
+##1.0.2
+- Add main to package.json
+##1.0.1
+- Add main to package.json
+##1.0.0
+- Initial release

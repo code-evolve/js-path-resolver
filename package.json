@@ -1,0 +1,65 @@
+{
+  "name": "js-path-resolver",
+  "version": "1.1.0",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "description": "Resolves paths in Javascript objects, and provides tools to get, set, replace, or remove the resolved item",
+  "keywords": [
+    "path",
+    "dotprop",
+    "dotpath",
+    "javascript",
+    "object",
+    "field",
+    "array",
+    "resolve"
+  ],
+  "author": "Steven Spungin",
+  "homepage": "https://www.twelvetone.tv/docs/developer-tools/npm-modules/js-path-resolver",
+  "runkitExampleFilename": "demo/index.js",
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "vue": "^2.7.16"
+  },
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm && npm run build:global && npm run build:vuex && npm run build:plugin",
+    "build:cjs": "esbuild src/index.js --bundle --format=cjs --platform=neutral --outfile=dist/index.js",
+    "build:esm": "esbuild src/index.js --bundle --format=esm --platform=neutral --outfile=dist/index.mjs",
+    "build:global": "esbuild src/index.js --bundle --format=iife --global-name=jsPathResolver --minify --outfile=dist/index.global.js",
+    "test": "node --test test/spec/*.mjs",
+    "prepublishOnly": "npm run build && npm test",
+    "build:vuex": "esbuild src/dot-path-mutations.js --bundle --format=cjs --platform=neutral --external:vue --outfile=dist/vuex.js && esbuild src/dot-path-mutations.js --bundle --format=esm --platform=neutral --external:vue --outfile=dist/vuex.mjs",
+    "build:plugin": "esbuild src/DotPathPlugin.js --bundle --format=cjs --platform=neutral --outfile=dist/vue-plugin.js && esbuild src/DotPathPlugin.js --bundle --format=esm --platform=neutral --outfile=dist/vue-plugin.mjs"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json",
+    "./vuex": {
+      "import": "./dist/vuex.mjs",
+      "require": "./dist/vuex.js"
+    },
+    "./vue-plugin": {
+      "import": "./dist/vue-plugin.mjs",
+      "require": "./dist/vue-plugin.js"
+    }
+  },
+  "files": [
+    "dist",
+    "demo",
+    "readme.md",
+    "changelog.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "vue": "^2"
+  },
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    }
+  }
+}

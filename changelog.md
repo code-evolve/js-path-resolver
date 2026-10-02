@@ -1,3 +1,17 @@
+# 2.0.1
+
+Documentation only. No code changed: `dist` is byte-for-byte what 2.0.0 built.
+
+- The API documentation is in the readme. It used to be a link to a page on twelvetone.tv, which
+  now redirects.
+- **Fixed:** the browser install snippet loaded `dist/index.js`, which is the CommonJS build and
+  does not run in a script tag. It now loads `dist/index.global.js`.
+- **Corrected** against the source while moving the text: a path whose last field is missing
+  returns a path info with `field` undefined, it does not return `undefined`. `delete()` on an
+  array item splices it out. The escaping example doubles the backslash, as a Javascript string
+  literal needs.
+- `homepage` is https://code-evolve.com/resources/js-path-resolver.
+
 # 2.0.0
 
 **Vue 3.** The major version is the Vue 2 to Vue 3 move and nothing else: the resolver itself,

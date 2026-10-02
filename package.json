@@ -1,6 +1,6 @@
 {
   "name": "js-path-resolver",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "license": "MIT",
   "main": "dist/index.js",
   "description": "Resolves paths in Javascript objects, and provides tools to get, set, replace, or remove the resolved item",
@@ -15,7 +15,7 @@
     "resolve"
   ],
   "author": "Steven Spungin",
-  "homepage": "https://www.twelvetone.tv/docs/developer-tools/npm-modules/js-path-resolver",
+  "homepage": "https://code-evolve.com/resources/js-path-resolver",
   "runkitExampleFilename": "demo/index.js",
   "devDependencies": {
     "esbuild": "^0.28.2",

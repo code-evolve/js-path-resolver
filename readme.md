@@ -100,6 +100,15 @@ const info = resolver(state, 'mr\\.dot.odd\\[name')
   `delete info.parent[info.fieldName]`. On an array the item is spliced out, so the items
   after it move down and no hole is left.
 
+`set` and `delete` refuse a path that passes through `__proto__`, `prototype` or
+`constructor`, because writing there changes a prototype shared by every object. Reading
+through them with `get` is allowed. `set` also throws if the parent is a string, number or
+other primitive.
+
+`delete` on an array only splices when the field name is an index inside the array. An index
+past the end does nothing, and a name that is not an index is deleted as an ordinary property
+of the array.
+
 ## Path info fields
 
 - `field` is the resolved value, or `undefined`.
@@ -110,7 +119,8 @@ const info = resolver(state, 'mr\\.dot.odd\\[name')
 
 ## Options
 
-- `onError` set to `'continue'` stops the resolver throwing when the path cannot be followed
+- `onError` is `'throw'`, the default, or `'continue'`. Any other value is rejected with a
+  `TypeError`. `'continue'` stops the resolver throwing when the path cannot be followed
   to the parent. `exists` is `false` instead, `parent` and `field` are `null`, and `get`,
   `set` and `delete` throw.
 

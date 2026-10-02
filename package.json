@@ -1,6 +1,6 @@
 {
   "name": "js-path-resolver",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "license": "MIT",
   "main": "dist/index.js",
   "description": "Resolves paths in Javascript objects, and provides tools to get, set, replace, or remove the resolved item",

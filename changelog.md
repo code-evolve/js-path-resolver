@@ -1,3 +1,25 @@
+# 2.0.2
+
+Five fixes to the resolver. Each corrects something no caller could have relied on.
+
+- **Security:** `set()` and `delete()` refuse a path that passes through `__proto__`,
+  `prototype` or `constructor`. `resolver({}, '__proto__.x').set(1)` used to assign to
+  `Object.prototype`, so every object in the process gained `x`, and a path built from outside
+  input could do that. Reading through those names is unchanged. The Vuex `path.set` and
+  `path.clear` mutations now write through `set()`, so they refuse too.
+- **Fixed:** `delete()` on an array removed the wrong element for a field name that was not an
+  index: `list.x` removed the first element and `list.-1` the last. It now splices only a real
+  index, does nothing for an index past the end, and deletes any other name as a property.
+- **Fixed:** `set()` on a primitive parent, such as a string, returned normally from the
+  CommonJS build having set nothing, while the ESM build threw. Both throw a `TypeError`.
+- **Fixed:** an empty path failed with `Cannot read properties of null (reading 'length')`. It
+  now throws `path must name at least one field`.
+- **Fixed:** an `onError` value other than `'continue'` was silently ignored. Unknown values
+  are rejected with a `TypeError`, and `'throw'` is accepted as the default spelled out.
+- 68 tests across 16 suites, up from 43. The new ones also pin behaviour that worked and was
+  not asserted: nested and root brackets, a null leaf, and the lenient handling of a leading
+  dot, a doubled dot and a trailing backslash.
+
 # 2.0.1
 
 Documentation only. No code changed: `dist` is byte-for-byte what 2.0.0 built.

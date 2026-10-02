@@ -13,6 +13,20 @@ function segmentName(rawSegment) {
 var UNSAFE_SEGMENTS = /* @__PURE__ */ new Set(["__proto__", "prototype", "constructor"]);
 var ON_ERROR_VALUES = ["throw", "continue"];
 var rxArrayIndex = /^(?:0|[1-9]\d*)$/;
+var rxSegment = /\[(["'])((?:\\.|(?!\1)[^\\])*)\1\]|(?:[^\.\[\\]|\\.)+/g;
+function parsePath(path) {
+  const names = [];
+  for (const match of path.matchAll(rxSegment)) {
+    names.push(typeof match[1] !== "undefined" ? unescape(match[2]) : segmentName(match[0]));
+  }
+  return names;
+}
+function isContainer(value) {
+  return value !== null && (typeof value === "object" || typeof value === "function");
+}
+function hasOwn(parent, name) {
+  return parent !== null && typeof parent !== "undefined" && Object.prototype.hasOwnProperty.call(Object(parent), name);
+}
 function jsPathResolver(object, path, opts = {}) {
   if (typeof object === "undefined") {
     throw Error("object must be defined");
@@ -23,11 +37,11 @@ function jsPathResolver(object, path, opts = {}) {
   if (typeof opts.onError !== "undefined" && !ON_ERROR_VALUES.includes(opts.onError)) {
     throw new TypeError(`onError must be one of ${ON_ERROR_VALUES.join(", ")}; received ${String(opts.onError)}`);
   }
-  let fieldNames = path.match(/(?:[^\.\[\\]|\\.)+/g);
-  if (fieldNames === null) {
+  const fieldNames = parsePath(path);
+  if (fieldNames.length === 0) {
     throw Error("path must name at least one field");
   }
-  const fieldName = segmentName(fieldNames[fieldNames.length - 1]);
+  const fieldName = fieldNames[fieldNames.length - 1];
   let field = object;
   let parent = null;
   let exists = true;
@@ -35,27 +49,48 @@ function jsPathResolver(object, path, opts = {}) {
   try {
     for (let i = 0; i < fieldNames.length; i++) {
       parent = field;
-      field = field[segmentName(fieldNames[i])];
+      field = field[fieldNames[i]];
     }
   } catch (e) {
     error = e.message;
     exists = false;
-    if (opts.onError && opts.onError === "continue") {
+    if (opts.onError === "continue" || opts.create === true) {
       parent = null;
       field = null;
     } else {
       throw new Error(`Could not resolve the path ${path}: ${e.message}`);
     }
   }
-  fieldNames = fieldNames.map(segmentName);
   const unsafeName = fieldNames.find((name) => UNSAFE_SEGMENTS.has(name));
   function refuseUnsafe(action) {
     if (typeof unsafeName !== "undefined") {
       throw new Error(`Refusing to ${action} through the path ${path}: ${unsafeName} reaches a shared prototype`);
     }
   }
+  function createParent() {
+    if (!isContainer(object)) {
+      throw new TypeError(`Cannot create the path ${path}: the root is not an object`);
+    }
+    let current = object;
+    for (let i = 0; i < fieldNames.length - 1; i++) {
+      const name = fieldNames[i];
+      let next = current[name];
+      if (next === null || typeof next === "undefined") {
+        next = rxArrayIndex.test(fieldNames[i + 1]) ? [] : {};
+        current[name] = next;
+      } else if (!isContainer(next)) {
+        throw new TypeError(`Cannot create the path ${path}: ${name} is a ${typeof next}, not an object`);
+      }
+      current = next;
+    }
+    return current;
+  }
   return {
     exists,
+    // True only when the field itself is present as an own property of its parent. exists
+    // says the parent resolved, which is what set() needs; has says there is something to
+    // get().
+    has: exists && hasOwn(parent, fieldName),
     field,
     parent,
     fieldNames,
@@ -71,17 +106,23 @@ function jsPathResolver(object, path, opts = {}) {
         delete this.parent[this.fieldName];
       }
       this.field = void 0;
+      this.has = false;
     },
     set(newValue) {
-      if (!this.exists) {
-        throw new Error(`Could not resolve the path ${path}: ${error}`);
-      }
       refuseUnsafe("set");
+      if (!this.exists) {
+        if (opts.create !== true) {
+          throw new Error(`Could not resolve the path ${path}: ${error}`);
+        }
+        this.parent = createParent();
+        this.exists = true;
+      }
       if (this.parent === null || typeof this.parent !== "object" && typeof this.parent !== "function") {
         throw new TypeError(`Cannot set ${this.fieldName} at the path ${path}: its parent is a ${typeof this.parent}, not an object`);
       }
       this.parent[this.fieldName] = newValue;
       this.field = newValue;
+      this.has = true;
     },
     get() {
       if (!this.exists) {
@@ -205,6 +246,50 @@ var mutations = {
     let { path, value } = payload;
     let found = jsPathResolver_default(state, path);
     found.set(value);
+    log(state);
+  },
+  "path.delete"(state, payload) {
+    let { path } = payload;
+    jsPathResolver_default(state, path).delete();
+    log(state);
+  },
+  // `value` is the step and defaults to 1. A field that is not a number is reported and
+  // left alone: adding to a string would concatenate, and adding to undefined gives NaN.
+  "path.increment"(state, payload) {
+    let { path, value = 1 } = payload;
+    let found = jsPathResolver_default(state, path);
+    if (typeof found.field === "number") {
+      found.set(found.field + value);
+    } else {
+      console.error(`path.increment needs a number at ${path}`);
+    }
+    log(state);
+  },
+  "path.decrement"(state, payload) {
+    let { path, value = 1 } = payload;
+    let found = jsPathResolver_default(state, path);
+    if (typeof found.field === "number") {
+      found.set(found.field - value);
+    } else {
+      console.error(`path.decrement needs a number at ${path}`);
+    }
+    log(state);
+  },
+  // Negates whatever is there, so a missing or falsy field becomes true.
+  "path.toggle"(state, payload) {
+    let { path } = payload;
+    let found = jsPathResolver_default(state, path);
+    found.set(!found.field);
+    log(state);
+  },
+  "path.true"(state, payload) {
+    let { path } = payload;
+    jsPathResolver_default(state, path).set(true);
+    log(state);
+  },
+  "path.false"(state, payload) {
+    let { path } = payload;
+    jsPathResolver_default(state, path).set(false);
     log(state);
   },
   "path.clear"(state, payload) {

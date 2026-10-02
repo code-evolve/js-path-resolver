@@ -34,14 +34,40 @@ const ON_ERROR_VALUES = ['throw', 'continue']
 // An array index as Array itself defines one: a canonical non-negative integer.
 const rxArrayIndex = /^(?:0|[1-9]\d*)$/
 
+// One segment of a path. Either a quoted bracket, a["b.c"] or a['b.c'], whose content is the
+// property name with nothing in it treated as a separator, or a run of characters up to the
+// next unescaped '.' or '['. A plain global match rather than a split on a lookbehind, which
+// Safari and Firefox did not support when this was written.
+const rxSegment = /\[(["'])((?:\\.|(?!\1)[^\\])*)\1\]|(?:[^\.\[\\]|\\.)+/g
+
+function parsePath(path) {
+  const names = []
+  for (const match of path.matchAll(rxSegment)) {
+    names.push(typeof match[1] !== 'undefined' ? unescape(match[2]) : segmentName(match[0]))
+  }
+  return names
+}
+
+function isContainer(value) {
+  return value !== null && (typeof value === 'object' || typeof value === 'function')
+}
+
+function hasOwn(parent, name) {
+  return parent !== null && typeof parent !== 'undefined'
+    && Object.prototype.hasOwnProperty.call(Object(parent), name)
+}
+
 /**
  * Traverses the object for the specified path and returns an info object
  *
  * @param object The javascript object to resolve
  * @param path A path string using dots to separate objects and array items. <br />
  * Paths cannot contain '.', '[' or ']' characters unless they are preceded by the escape character '\' <br />
- * Arrays can be specified by brackets (foo[2]) or dots (foo.2)
- * @returns {{field: *, parent: *, fieldNames: *, fieldName: *}} or undefined if the fields parent is not found.
+ * Arrays can be specified by brackets (foo[2]) or dots (foo.2) <br />
+ * A quoted bracket (foo["a.b"]) names a property exactly, with no escaping of separators
+ * @param opts onError: 'throw' (default) or 'continue'. create: true lets set() build the
+ * objects and arrays missing along the path.
+ * @returns {{exists: boolean, has: boolean, field: *, parent: *, fieldNames: string[], fieldName: string}}
  */
 function jsPathResolver(object, path, opts = {}) {
   if (typeof object === 'undefined') {
@@ -57,23 +83,14 @@ function jsPathResolver(object, path, opts = {}) {
     throw new TypeError(`onError must be one of ${ON_ERROR_VALUES.join(', ')}; received ${String(opts.onError)}`)
   }
 
-  let fieldNames = path.match(/(?:[^\.\[\\]|\\.)+/g)
-  if (fieldNames === null) {
-    // match() returns null for a path with no segments, and the next line then failed with
+  const fieldNames = parsePath(path)
+  if (fieldNames.length === 0) {
+    // A path with no segments used to reach the next line as null and fail with
     // "Cannot read properties of null (reading 'length')".
     throw Error("path must name at least one field")
   }
 
-  //Make sure to not use negative lookbehinds with split on Safari and Firefox
-  // We used match instead...
-  // const rxSplit = /(?<!\\)[\.\[]/
-  // path = path.replace(/\\\./g, "~~~1~~~")
-  // path = path.replace(/\\\[/g, "~~~2~~~")
-  // let fieldNames = path.split(rxSplit)
-  // fieldNames = fieldNames.map(value => value.replace(/~~~1~~~/g, "\\."))
-  // fieldNames = fieldNames.map(value => value.replace(/~~~2~~~/g, "\\["))
-
-  const fieldName = segmentName(fieldNames[fieldNames.length - 1])
+  const fieldName = fieldNames[fieldNames.length - 1]
 
   let field = object;
   let parent = null
@@ -82,12 +99,13 @@ function jsPathResolver(object, path, opts = {}) {
   try {
     for (let i = 0; i < fieldNames.length; i++) {
       parent = field
-      field = field[segmentName(fieldNames[i])]
+      field = field[fieldNames[i]]
     }
   } catch (e) {
     error = e.message
     exists = false
-    if (opts.onError && opts.onError === 'continue') {
+    // create implies continue: the point of it is to resolve a path that is not there yet.
+    if (opts.onError === 'continue' || opts.create === true) {
       parent = null
       field = null
     } else {
@@ -95,16 +113,39 @@ function jsPathResolver(object, path, opts = {}) {
     }
   }
 
-  // Only unescape the field names AFTER we have calculated the info.
-  fieldNames = fieldNames.map(segmentName)
   const unsafeName = fieldNames.find(name => UNSAFE_SEGMENTS.has(name))
   function refuseUnsafe(action) {
     if (typeof unsafeName !== 'undefined') {
       throw new Error(`Refusing to ${action} through the path ${path}: ${unsafeName} reaches a shared prototype`)
     }
   }
+  // With create, build what is missing between the root and the parent. Done here, when
+  // something is actually being set, and never while resolving: resolving a path to read it
+  // must not change the object.
+  function createParent() {
+    if (!isContainer(object)) {
+      throw new TypeError(`Cannot create the path ${path}: the root is not an object`)
+    }
+    let current = object
+    for (let i = 0; i < fieldNames.length - 1; i++) {
+      const name = fieldNames[i]
+      let next = current[name]
+      if (next === null || typeof next === 'undefined') {
+        next = rxArrayIndex.test(fieldNames[i + 1]) ? [] : {}
+        current[name] = next
+      } else if (!isContainer(next)) {
+        throw new TypeError(`Cannot create the path ${path}: ${name} is a ${typeof next}, not an object`)
+      }
+      current = next
+    }
+    return current
+  }
   return {
     exists,
+    // True only when the field itself is present as an own property of its parent. exists
+    // says the parent resolved, which is what set() needs; has says there is something to
+    // get().
+    has: exists && hasOwn(parent, fieldName),
     field,
     parent,
     fieldNames,
@@ -123,12 +164,17 @@ function jsPathResolver(object, path, opts = {}) {
         delete this.parent[this.fieldName]
       }
       this.field = undefined
+      this.has = false
     },
     set(newValue) {
-      if (!this.exists) {
-        throw new Error(`Could not resolve the path ${path}: ${error}`)
-      }
       refuseUnsafe('set')
+      if (!this.exists) {
+        if (opts.create !== true) {
+          throw new Error(`Could not resolve the path ${path}: ${error}`)
+        }
+        this.parent = createParent()
+        this.exists = true
+      }
       // Assigning a property to a string or number throws in strict code and does nothing
       // in sloppy code, so the ESM build threw here while the CommonJS build returned as if
       // it had worked. Both now say so.
@@ -137,6 +183,7 @@ function jsPathResolver(object, path, opts = {}) {
       }
       this.parent[this.fieldName] = newValue
       this.field = newValue
+      this.has = true
     },
     get() {
       if (!this.exists) {

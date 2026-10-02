@@ -11,8 +11,6 @@ import jsPathResolver from './jsPathResolver.js'
 
 let debug = false
 
-//TODO add path delete, increment, decrement, toggle, true, false
-
 function log(state) {
   if (debug) {
     console.log(structuredClone(state))  // deepcopy was never defined in this module
@@ -139,6 +137,50 @@ const mutations =
       // Through set() rather than by assigning to found.parent, so the resolver's refusal
       // to write through a prototype applies here too.
       found.set(value)
+      log(state)
+    },
+    'path.delete'(state, payload) {
+      let {path} = payload
+      jsPathResolver(state, path).delete()
+      log(state)
+    },
+    // `value` is the step and defaults to 1. A field that is not a number is reported and
+    // left alone: adding to a string would concatenate, and adding to undefined gives NaN.
+    'path.increment'(state, payload) {
+      let {path, value = 1} = payload
+      let found = jsPathResolver(state, path)
+      if (typeof found.field === 'number') {
+        found.set(found.field + value)
+      } else {
+        console.error(`path.increment needs a number at ${path}`)
+      }
+      log(state)
+    },
+    'path.decrement'(state, payload) {
+      let {path, value = 1} = payload
+      let found = jsPathResolver(state, path)
+      if (typeof found.field === 'number') {
+        found.set(found.field - value)
+      } else {
+        console.error(`path.decrement needs a number at ${path}`)
+      }
+      log(state)
+    },
+    // Negates whatever is there, so a missing or falsy field becomes true.
+    'path.toggle'(state, payload) {
+      let {path} = payload
+      let found = jsPathResolver(state, path)
+      found.set(!found.field)
+      log(state)
+    },
+    'path.true'(state, payload) {
+      let {path} = payload
+      jsPathResolver(state, path).set(true)
+      log(state)
+    },
+    'path.false'(state, payload) {
+      let {path} = payload
+      jsPathResolver(state, path).set(false)
       log(state)
     },
     'path.clear'(state, payload) {

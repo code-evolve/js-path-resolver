@@ -48,3 +48,40 @@ describe('the vuex build carries no framework', () => {
     assert.doesNotMatch(source, /Vue\.set/)
   })
 })
+
+// Every entry point declares types for both module systems. The .d.mts files are generated
+// from the .d.ts ones, so a hand edit to one that is not rebuilt into the other shows here.
+describe('type declarations', () => {
+  const fs = require('node:fs')
+  const read = (name) => fs.readFileSync(new URL(`../../${name}`, import.meta.url), 'utf8')
+  const pkg = JSON.parse(read('package.json'))
+
+  for (const entry of ['.', './vuex', './vue-plugin']) {
+    it(`${entry} names a declaration file that exists, for import and for require`, () => {
+      for (const condition of ['import', 'require']) {
+        const target = pkg.exports[entry][condition]
+        assert.ok(fs.existsSync(new URL(`../../${target.types}`, import.meta.url)), target.types)
+        assert.ok(fs.existsSync(new URL(`../../${target.default}`, import.meta.url)), target.default)
+      }
+    })
+  }
+
+  it('the .d.mts files match the .d.ts files they are generated from', () => {
+    for (const name of ['index', 'vuex', 'vue-plugin']) {
+      const expected = read(`types/${name}.d.ts`).replace(/from '(\.\/[^']+)'/g, "from '$1.mjs'")
+      assert.strictEqual(read(`types/${name}.d.mts`), expected)
+    }
+  })
+
+  it('the declarations name every mutation the module exports', async () => {
+    const { mutations } = await import('../../dist/vuex.mjs')
+    const declared = read('types/vuex.d.ts')
+    for (const name of Object.keys(mutations)) {
+      assert.ok(declared.includes(`'${name}'`), name)
+    }
+  })
+
+  it('types ship in the package', () => {
+    assert.ok(pkg.files.includes('types'))
+  })
+})

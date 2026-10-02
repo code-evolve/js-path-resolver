@@ -3,6 +3,7 @@
   "version": "2.0.2",
   "license": "MIT",
   "main": "dist/index.js",
+  "types": "types/index.d.ts",
   "description": "Resolves paths in Javascript objects, and provides tools to get, set, replace, or remove the resolved item",
   "keywords": [
     "path",
@@ -22,33 +23,53 @@
     "vue": "^3.5.0"
   },
   "scripts": {
-    "build": "npm run build:cjs && npm run build:esm && npm run build:global && npm run build:vuex && npm run build:plugin",
+    "build": "npm run build:cjs && npm run build:esm && npm run build:global && npm run build:vuex && npm run build:plugin && npm run build:types",
     "build:cjs": "esbuild src/index.js --bundle --format=cjs --platform=neutral --outfile=dist/index.js",
     "build:esm": "esbuild src/index.js --bundle --format=esm --platform=neutral --outfile=dist/index.mjs",
     "build:global": "esbuild src/index.js --bundle --format=iife --global-name=jsPathResolver --minify --outfile=dist/index.global.js",
     "test": "node --test test/spec/*.mjs",
     "prepublishOnly": "npm run build && npm test",
     "build:vuex": "esbuild src/dot-path-mutations.js --bundle --format=cjs --platform=neutral --external:vue --outfile=dist/vuex.js && esbuild src/dot-path-mutations.js --bundle --format=esm --platform=neutral --external:vue --outfile=dist/vuex.mjs",
-    "build:plugin": "esbuild src/DotPathPlugin.js --bundle --format=cjs --platform=neutral --outfile=dist/vue-plugin.js && esbuild src/DotPathPlugin.js --bundle --format=esm --platform=neutral --outfile=dist/vue-plugin.mjs"
+    "build:plugin": "esbuild src/DotPathPlugin.js --bundle --format=cjs --platform=neutral --outfile=dist/vue-plugin.js && esbuild src/DotPathPlugin.js --bundle --format=esm --platform=neutral --outfile=dist/vue-plugin.mjs",
+    "build:types": "node scripts/build-types.mjs"
   },
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": {
+        "types": "./types/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./types/index.d.ts",
+        "default": "./dist/index.js"
+      }
     },
     "./dist/*": "./dist/*",
     "./package.json": "./package.json",
     "./vuex": {
-      "import": "./dist/vuex.mjs",
-      "require": "./dist/vuex.js"
+      "import": {
+        "types": "./types/vuex.d.mts",
+        "default": "./dist/vuex.mjs"
+      },
+      "require": {
+        "types": "./types/vuex.d.ts",
+        "default": "./dist/vuex.js"
+      }
     },
     "./vue-plugin": {
-      "import": "./dist/vue-plugin.mjs",
-      "require": "./dist/vue-plugin.js"
+      "import": {
+        "types": "./types/vue-plugin.d.mts",
+        "default": "./dist/vue-plugin.mjs"
+      },
+      "require": {
+        "types": "./types/vue-plugin.d.ts",
+        "default": "./dist/vue-plugin.js"
+      }
     }
   },
   "files": [
     "dist",
+    "types",
     "demo",
     "readme.md",
     "changelog.md",

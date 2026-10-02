@@ -69,12 +69,15 @@ can be addressed with brackets, `foo[2]`, or with a dot, `foo.2`.
 Using the `state` object above, the completed value of the eat todo is at
 `lists.todo.1.completed` or `lists.todo[1].completed`.
 
+A quoted bracket names a property exactly, so nothing inside it needs escaping:
+`a["b.c"]` and `a['b c']` address the properties `b.c` and `b c` of `a`.
+
 ## Paths that do not exist
 
 The resolver always returns a path info object. If the last field in the path is not defined
 in its parent, `info.field` is `undefined` and nothing is thrown, so `set` can be used to add
 it. If the path cannot be followed as far as the parent, an `Error` is thrown, unless the
-`onError` option described under Usage is set.
+`onError` or `create` option is set.
 
 ```js
 const info = resolver(state, 'lists.done') // does not throw, info.field is undefined
@@ -116,6 +119,8 @@ of the array.
 - `fieldName` is the name of the field in its parent.
 - `fieldNames` is an array of every field name in the path, starting from the root object.
 - `exists` is `true` if the path could be resolved up to the parent.
+- `has` is `true` if the field itself is present as an own property of its parent. A missing
+  last field has `exists` true and `has` false.
 
 ## Options
 
@@ -123,6 +128,25 @@ of the array.
   `TypeError`. `'continue'` stops the resolver throwing when the path cannot be followed
   to the parent. `exists` is `false` instead, `parent` and `field` are `null`, and `get`,
   `set` and `delete` throw.
+- `create` set to `true` lets `set` build the objects and arrays that are missing along the
+  path. An array is built where the next field is an index. Nothing is created until `set`
+  is called, and it implies `onError: 'continue'`.
+
+```js
+const state = {}
+resolver(state, 'lists.todo[0].caption', { create: true }).set('wake up')
+// state is { lists: { todo: [ { caption: 'wake up' } ] } }
+```
+
+## TypeScript
+
+Type declarations are included for all three entry points.
+
+```ts
+import resolver, { PathInfo, ResolveOptions } from 'js-path-resolver'
+
+const info: PathInfo<boolean> = resolver<boolean>(state, 'lists.todo[1].completed')
+```
 
 ## Vue and Vuex
 
@@ -133,9 +157,11 @@ import { mutations, getters } from 'js-path-resolver/vuex'
 import DotPathPlugin from 'js-path-resolver/vue-plugin'
 ```
 
-`mutations` provides `path.set`, `path.clear`, `path.list.add`, `path.list.remove`,
-`path.list.insert`, `path.list.replace` and `path.list.move` for a Vuex store, and `getters`
-provides `pathGet` and `pathExists`. **As of 2.0.0 this entry point imports nothing but the
+`mutations` provides `path.set`, `path.delete`, `path.clear`, `path.increment`,
+`path.decrement`, `path.toggle`, `path.true`, `path.false`, `path.list.add`,
+`path.list.remove`, `path.list.insert`, `path.list.replace` and `path.list.move` for a Vuex
+store, and `getters` provides `pathGet` and `pathExists`. `path.increment` and
+`path.decrement` step by `value`, or by 1 without one. **As of 2.0.0 this entry point imports nothing but the
 resolver**: Vue 3's reactivity observes a plain assignment, so the `Vue.set` calls that Vue 2
 required are gone, and these mutations work against any object.
 

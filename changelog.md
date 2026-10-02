@@ -1,3 +1,25 @@
+# 2.1.0
+
+Additions only. Nothing that worked in 2.0.2 changes, with one exception noted under quoted
+brackets.
+
+- **Quoted brackets.** `a["b.c"]` and `a['b c']` name a property exactly, with no escaping
+  of separators. Before this the quotes were taken as part of the name, so `a["b"]` looked up
+  a property called `"b"`, quotes included. That is the one behaviour that changes.
+- **`has`** on the path info: true when the field itself is present as an own property of its
+  parent. `exists` keeps its meaning, that the parent resolved, so a missing last field is
+  `exists` true and `has` false.
+- **`create` option.** `resolver(state, 'a.b[0].c', { create: true }).set(1)` builds the
+  missing objects and arrays. Nothing is created until `set` is called, so resolving a path to
+  read it never changes the object. It will not build through a primitive or a prototype.
+- **Six Vuex mutations:** `path.delete`, `path.increment`, `path.decrement`, `path.toggle`,
+  `path.true` and `path.false`. Increment and decrement step by `value`, default 1, and
+  report a field that is not a number instead of producing `NaN` or a concatenated string.
+- **TypeScript declarations** for all three entry points, for `import` and for `require`.
+  Checked with `tsc --strict` under `node16` and `bundler` resolution, from both an ES module
+  and a CommonJS consumer.
+- 102 tests across 23 suites.
+
 # 2.0.2
 
 Five fixes to the resolver. Each corrects something no caller could have relied on.

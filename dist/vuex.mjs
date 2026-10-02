@@ -1,3 +1,5 @@
+/*! js-path-resolver 2.1.0 | (c) 2018-present Steven Spungin | MIT */
+
 // src/jsPathResolver.js
 var rxReplace = /\\(.)/g;
 function unescape(field) {

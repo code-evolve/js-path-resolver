@@ -85,3 +85,19 @@ describe('type declarations', () => {
     assert.ok(pkg.files.includes('types'))
   })
 })
+
+// The built files are loaded from a CDN or copied into a page with no LICENSE beside them,
+// so each carries the copyright notice the licence asks to keep with copies. The /*! form
+// is what survives minifying.
+describe('every built file carries the licence banner', () => {
+  const fs = require('node:fs')
+  const version = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version
+  const banner = `/*! js-path-resolver ${version} | (c) 2018-present Steven Spungin | MIT */`
+  const dist = new URL('../../dist/', import.meta.url)
+
+  for (const name of fs.readdirSync(dist)) {
+    it(name, () => {
+      assert.ok(fs.readFileSync(new URL(name, dist), 'utf8').startsWith(banner))
+    })
+  }
+})

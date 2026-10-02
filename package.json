@@ -24,13 +24,13 @@
   },
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm && npm run build:global && npm run build:vuex && npm run build:plugin && npm run build:types",
-    "build:cjs": "esbuild src/index.js --bundle --format=cjs --platform=neutral --outfile=dist/index.js",
-    "build:esm": "esbuild src/index.js --bundle --format=esm --platform=neutral --outfile=dist/index.mjs",
-    "build:global": "esbuild src/index.js --bundle --format=iife --global-name=jsPathResolver --minify --outfile=dist/index.global.js",
+    "build:cjs": "esbuild src/index.js --bundle --format=cjs --platform=neutral --outfile=dist/index.js --banner:js=\"/*! js-path-resolver $npm_package_version | (c) 2018-present Steven Spungin | MIT */\"",
+    "build:esm": "esbuild src/index.js --bundle --format=esm --platform=neutral --outfile=dist/index.mjs --banner:js=\"/*! js-path-resolver $npm_package_version | (c) 2018-present Steven Spungin | MIT */\"",
+    "build:global": "esbuild src/index.js --bundle --format=iife --global-name=jsPathResolver --minify --outfile=dist/index.global.js --banner:js=\"/*! js-path-resolver $npm_package_version | (c) 2018-present Steven Spungin | MIT */\"",
     "test": "node --test test/spec/*.mjs",
     "prepublishOnly": "npm run build && npm test",
-    "build:vuex": "esbuild src/dot-path-mutations.js --bundle --format=cjs --platform=neutral --external:vue --outfile=dist/vuex.js && esbuild src/dot-path-mutations.js --bundle --format=esm --platform=neutral --external:vue --outfile=dist/vuex.mjs",
-    "build:plugin": "esbuild src/DotPathPlugin.js --bundle --format=cjs --platform=neutral --outfile=dist/vue-plugin.js && esbuild src/DotPathPlugin.js --bundle --format=esm --platform=neutral --outfile=dist/vue-plugin.mjs",
+    "build:vuex": "esbuild src/dot-path-mutations.js --bundle --format=cjs --platform=neutral --external:vue --outfile=dist/vuex.js --banner:js=\"/*! js-path-resolver $npm_package_version | (c) 2018-present Steven Spungin | MIT */\" && esbuild src/dot-path-mutations.js --bundle --format=esm --platform=neutral --external:vue --outfile=dist/vuex.mjs --banner:js=\"/*! js-path-resolver $npm_package_version | (c) 2018-present Steven Spungin | MIT */\"",
+    "build:plugin": "esbuild src/DotPathPlugin.js --bundle --format=cjs --platform=neutral --outfile=dist/vue-plugin.js --banner:js=\"/*! js-path-resolver $npm_package_version | (c) 2018-present Steven Spungin | MIT */\" && esbuild src/DotPathPlugin.js --bundle --format=esm --platform=neutral --outfile=dist/vue-plugin.mjs --banner:js=\"/*! js-path-resolver $npm_package_version | (c) 2018-present Steven Spungin | MIT */\"",
     "build:types": "node scripts/build-types.mjs"
   },
   "exports": {

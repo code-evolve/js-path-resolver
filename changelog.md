@@ -18,7 +18,9 @@ brackets.
 - **TypeScript declarations** for all three entry points, for `import` and for `require`.
   Checked with `tsc --strict` under `node16` and `bundler` resolution, from both an ES module
   and a CommonJS consumer.
-- 102 tests across 23 suites.
+- Every built file starts with a one-line banner naming the package, version, copyright
+  holder and licence, so the notice stays with a file loaded from a CDN or copied on its own.
+- 109 tests across 24 suites.
 
 # 2.0.2
 

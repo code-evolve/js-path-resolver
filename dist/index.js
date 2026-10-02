@@ -1,3 +1,4 @@
+/*! js-path-resolver 2.1.0 | (c) 2018-present Steven Spungin | MIT */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;

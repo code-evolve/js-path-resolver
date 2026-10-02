@@ -23,6 +23,17 @@ function segmentName(rawSegment) {
   return name
 }
 
+// Assigning through any of these reaches a prototype shared by every object, so a path
+// built from outside input could change the behaviour of the whole process:
+// resolver({}, '__proto__.x').set(1) used to make ({}).x === 1 everywhere. Reading through
+// them is harmless and stays allowed; set() and delete() refuse.
+const UNSAFE_SEGMENTS = new Set(['__proto__', 'prototype', 'constructor'])
+
+const ON_ERROR_VALUES = ['throw', 'continue']
+
+// An array index as Array itself defines one: a canonical non-negative integer.
+const rxArrayIndex = /^(?:0|[1-9]\d*)$/
+
 /**
  * Traverses the object for the specified path and returns an info object
  *
@@ -40,7 +51,18 @@ function jsPathResolver(object, path, opts = {}) {
     throw Error("path must be a string")
   }
 
+  // An unknown value used to be ignored, which read as "the option did nothing" only when
+  // the path later failed to resolve.
+  if (typeof opts.onError !== 'undefined' && !ON_ERROR_VALUES.includes(opts.onError)) {
+    throw new TypeError(`onError must be one of ${ON_ERROR_VALUES.join(', ')}; received ${String(opts.onError)}`)
+  }
+
   let fieldNames = path.match(/(?:[^\.\[\\]|\\.)+/g)
+  if (fieldNames === null) {
+    // match() returns null for a path with no segments, and the next line then failed with
+    // "Cannot read properties of null (reading 'length')".
+    throw Error("path must name at least one field")
+  }
 
   //Make sure to not use negative lookbehinds with split on Safari and Firefox
   // We used match instead...
@@ -75,6 +97,12 @@ function jsPathResolver(object, path, opts = {}) {
 
   // Only unescape the field names AFTER we have calculated the info.
   fieldNames = fieldNames.map(segmentName)
+  const unsafeName = fieldNames.find(name => UNSAFE_SEGMENTS.has(name))
+  function refuseUnsafe(action) {
+    if (typeof unsafeName !== 'undefined') {
+      throw new Error(`Refusing to ${action} through the path ${path}: ${unsafeName} reaches a shared prototype`)
+    }
+  }
   return {
     exists,
     field,
@@ -85,7 +113,11 @@ function jsPathResolver(object, path, opts = {}) {
       if (!this.exists) {
         throw new Error(`Could not resolve the path ${path}: ${error}`)
       }
-      if (Array.isArray(this.parent)) {
+      refuseUnsafe('delete')
+      // Only a real index is spliced. Number('x') is NaN and splice treats NaN as 0, so
+      // deleting 'list.x' used to remove the first element, and 'list.-1' the last. Any
+      // other name is an ordinary property of the array and is deleted as one.
+      if (Array.isArray(this.parent) && rxArrayIndex.test(this.fieldName)) {
         this.parent.splice(Number(this.fieldName), 1)
       } else {
         delete this.parent[this.fieldName]
@@ -95,6 +127,13 @@ function jsPathResolver(object, path, opts = {}) {
     set(newValue) {
       if (!this.exists) {
         throw new Error(`Could not resolve the path ${path}: ${error}`)
+      }
+      refuseUnsafe('set')
+      // Assigning a property to a string or number throws in strict code and does nothing
+      // in sloppy code, so the ESM build threw here while the CommonJS build returned as if
+      // it had worked. Both now say so.
+      if (this.parent === null || (typeof this.parent !== 'object' && typeof this.parent !== 'function')) {
+        throw new TypeError(`Cannot set ${this.fieldName} at the path ${path}: its parent is a ${typeof this.parent}, not an object`)
       }
       this.parent[this.fieldName] = newValue
       this.field = newValue

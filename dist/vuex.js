@@ -37,6 +37,9 @@ function segmentName(rawSegment) {
   }
   return name;
 }
+var UNSAFE_SEGMENTS = /* @__PURE__ */ new Set(["__proto__", "prototype", "constructor"]);
+var ON_ERROR_VALUES = ["throw", "continue"];
+var rxArrayIndex = /^(?:0|[1-9]\d*)$/;
 function jsPathResolver(object, path, opts = {}) {
   if (typeof object === "undefined") {
     throw Error("object must be defined");
@@ -44,7 +47,13 @@ function jsPathResolver(object, path, opts = {}) {
   if (typeof path !== "string") {
     throw Error("path must be a string");
   }
+  if (typeof opts.onError !== "undefined" && !ON_ERROR_VALUES.includes(opts.onError)) {
+    throw new TypeError(`onError must be one of ${ON_ERROR_VALUES.join(", ")}; received ${String(opts.onError)}`);
+  }
   let fieldNames = path.match(/(?:[^\.\[\\]|\\.)+/g);
+  if (fieldNames === null) {
+    throw Error("path must name at least one field");
+  }
   const fieldName = segmentName(fieldNames[fieldNames.length - 1]);
   let field = object;
   let parent = null;
@@ -66,6 +75,12 @@ function jsPathResolver(object, path, opts = {}) {
     }
   }
   fieldNames = fieldNames.map(segmentName);
+  const unsafeName = fieldNames.find((name) => UNSAFE_SEGMENTS.has(name));
+  function refuseUnsafe(action) {
+    if (typeof unsafeName !== "undefined") {
+      throw new Error(`Refusing to ${action} through the path ${path}: ${unsafeName} reaches a shared prototype`);
+    }
+  }
   return {
     exists,
     field,
@@ -76,7 +91,8 @@ function jsPathResolver(object, path, opts = {}) {
       if (!this.exists) {
         throw new Error(`Could not resolve the path ${path}: ${error}`);
       }
-      if (Array.isArray(this.parent)) {
+      refuseUnsafe("delete");
+      if (Array.isArray(this.parent) && rxArrayIndex.test(this.fieldName)) {
         this.parent.splice(Number(this.fieldName), 1);
       } else {
         delete this.parent[this.fieldName];
@@ -86,6 +102,10 @@ function jsPathResolver(object, path, opts = {}) {
     set(newValue) {
       if (!this.exists) {
         throw new Error(`Could not resolve the path ${path}: ${error}`);
+      }
+      refuseUnsafe("set");
+      if (this.parent === null || typeof this.parent !== "object" && typeof this.parent !== "function") {
+        throw new TypeError(`Cannot set ${this.fieldName} at the path ${path}: its parent is a ${typeof this.parent}, not an object`);
       }
       this.parent[this.fieldName] = newValue;
       this.field = newValue;
@@ -211,7 +231,7 @@ var mutations = {
   "path.set"(state, payload) {
     let { path, value } = payload;
     let found = jsPathResolver_default(state, path);
-    found.parent[found.fieldName] = value;
+    found.set(value);
     log(state);
   },
   "path.clear"(state, payload) {
@@ -219,9 +239,9 @@ var mutations = {
     let found = jsPathResolver_default(state, path);
     checkDefined(path, found);
     if (found.field instanceof Array) {
-      found.parent[found.fieldName] = [];
+      found.set([]);
     } else if (typeof found.field === "string") {
-      found.parent[found.fieldName] = "";
+      found.set("");
     } else {
       console.error(`path.clear does not support the type at ${path}`);
     }

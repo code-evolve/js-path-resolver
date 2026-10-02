@@ -136,7 +136,9 @@ const mutations =
       // information, since nothing here can tell a typo from an intended new property.
       // Every other mutation still checks, because operating on a list that does not exist
       // really is a mistake.
-      found.parent[found.fieldName] = value
+      // Through set() rather than by assigning to found.parent, so the resolver's refusal
+      // to write through a prototype applies here too.
+      found.set(value)
       log(state)
     },
     'path.clear'(state, payload) {
@@ -144,7 +146,7 @@ const mutations =
       let found = jsPathResolver(state, path)
       checkDefined(path, found);
       if (found.field instanceof Array) {
-        found.parent[found.fieldName] = []
+        found.set([])
       }
       // `instanceof String` is false for a string primitive, which is what every string in
       // a Vuex state actually is, so clearing a string always fell through to the error
@@ -152,7 +154,7 @@ const mutations =
       // ReferenceError instead of logging. Two defects on one path: the test that could
       // not match, and the message that could not print.
       else if (typeof found.field === 'string') {
-        found.parent[found.fieldName] = ''
+        found.set('')
       } else {
         console.error(`path.clear does not support the type at ${path}`)
       }

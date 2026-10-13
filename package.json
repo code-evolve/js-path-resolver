@@ -13,7 +13,8 @@
     "object",
     "field",
     "array",
-    "resolve"
+    "resolve",
+    "code-evolve"
   ],
   "author": "Steven Spungin",
   "homepage": "https://code-evolve.com/resources/js-path-resolver",
@@ -82,5 +83,12 @@
     "vue": {
       "optional": true
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/code-evolve/js-path-resolver.git"
+  },
+  "bugs": {
+    "url": "https://github.com/code-evolve/js-path-resolver/issues"
   }
 }

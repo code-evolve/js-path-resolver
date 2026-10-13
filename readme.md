@@ -3,6 +3,8 @@
 Resolves paths in Javascript objects, providing tools to
 get, set, replace, or remove the resolved item.
 
+Source and issues: [github.com/code-evolve/js-path-resolver](https://github.com/code-evolve/js-path-resolver)
+
 # Install
 ## Web browser
 ```

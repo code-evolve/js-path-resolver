@@ -142,32 +142,32 @@ fixes below.
 - 41 tests across 11 suites, up from 12, verified against an installed tarball for all three
   entry points in both module systems. Every fix above has a test that fails without it.
 
-#Changelog
-##1.0.14
+# Changelog before 1.1.0
+## 1.0.14
 - Update docs
-##1.0.13
+## 1.0.13
 - Fixed UMD build
 - Added option `onError`
-##1.0.12
+## 1.0.12
 - Use match instead of split for cross-browser regex support
-##1.0.11
-##1.0.10
-##1.0.9
-##1.0.8
+## 1.0.11
+## 1.0.10
+## 1.0.9
+## 1.0.8
 - Workaround for Safari and Firefox regexp lookbehind issue
-##1.0.7
+## 1.0.7
 - Force RunKit to refresh
-##1.0.6
+## 1.0.6
 - Update demo
-##1.0.5
+## 1.0.5
 - Fix module export issues
-##1.0.4
+## 1.0.4
 - Fix module export issues
-##1.0.3
+## 1.0.3
 - Fix webpack globalObject issues
-##1.0.2
+## 1.0.2
 - Add main to package.json
-##1.0.1
+## 1.0.1
 - Add main to package.json
-##1.0.0
+## 1.0.0
 - Initial release

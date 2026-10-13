@@ -4,7 +4,7 @@ Resolves paths in Javascript objects, providing tools to
 get, set, replace, or remove the resolved item.
 
 # Install
-## Web Browser
+## Web browser
 ```
 <script src="https://unpkg.com/js-path-resolver/dist/index.global.js"></script>
 <script>
